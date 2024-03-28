@@ -13613,6 +13613,7 @@ async function run() {
     // Get authenticated GitHub client (Ocktokit): https://github.com/actions/toolkit/tree/master/packages/github#usage
     const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
     let tagName = core.getInput('tag_name', { required: false });
+    let skipExisting = core.getInput('skip_existing', { required: false });
     if (tagName.length == 0) {
       tagName = github.context.ref
     }
@@ -13620,6 +13621,15 @@ async function run() {
     const getRelease = new GetRelease(octokit, owner, repo, tagName)
 
     const uploadUrl = await getRelease.getURL()
+
+    // Fetch existing release assets
+    const existingAssets = await octokit.repos.listReleaseAssets({
+      owner,
+      repo,
+      release_id: getRelease.getId(),
+    });
+
+    const existingAssetNames = existingAssets.data.map(asset => asset.name);
 
     // Get the inputs from the workflow file: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
     const assetPathsSt = core.getInput('asset_paths', { required: true });
@@ -13648,6 +13658,13 @@ async function run() {
     downloadURLs = []
     for(let i = 0; i < paths.length; i++) {
       let asset = paths[i];
+      const assetName = path.basename(asset);
+
+      // Skip upload if asset already exists
+      if (skipExisting && existingAssetNames.includes(assetName)) {
+        console.log(`Asset with the name ${assetName} already exists. Skipping upload for this asset.`);
+        continue;
+      }
 
       // Determine content-length for header to upload asset
       const contentLength = filePath => fs.statSync(filePath).size;
@@ -13658,7 +13675,6 @@ async function run() {
         'content-length': contentLength(asset)
       };
   
-      const assetName = path.basename(asset)
       console.log(`Uploading ${assetName}`)
 
       // Upload a release asset
@@ -13670,14 +13686,14 @@ async function run() {
         name: assetName,
         data: fs.readFileSync(asset)
       });
-  
+
       // Get the browser_download_url for the uploaded release asset from the response
       const {
         data: { browser_download_url: browserDownloadUrl }
       } = uploadAssetResponse;
-  
+
       // Set the output variable for use by other actions: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
-      downloadURLs.push(browserDownloadUrl)
+      downloadURLs.push(browserDownloadUrl);
     }
 
     core.setOutput('browser_download_urls', JSON.stringify(downloadURLs));
