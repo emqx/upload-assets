@@ -22,6 +22,23 @@ class GetRelease {
         const uploadURL = getReleaseResponse.data.upload_url
         return uploadURL;
     }
+
+    async getId() {
+      // This removes the 'refs/tags' portion of the string, i.e. from 'refs/tags/v1.10.15' to 'v1.10.15'
+      const tag = this.tagName.replace("refs/tags/", "");
+
+      // Get a release from the tag name
+      // API Documentation: https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#get-a-release-by-tag-name
+      // Octokit Documentation: https://octokit.github.io/rest.js/#repos-get-release-by-tag
+      const getReleaseResponse = await this.octokit.repos.getReleaseByTag({
+          owner: this.owner,
+          repo: this.repo,
+          tag
+      });
+
+      const releaseId = getReleaseResponse.data.id
+      return releaseId;
+    }
 }
 
 module.exports = GetRelease
