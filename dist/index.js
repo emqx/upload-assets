@@ -13567,7 +13567,7 @@ class GetRelease {
             tag
         });
 
-        const uploadURL = getReleaseResponse.data.upload_url
+        const uploadURL = getReleaseResponse.data.upload_url;
         return uploadURL;
     }
 
@@ -13583,8 +13583,9 @@ class GetRelease {
           repo: this.repo,
           tag
       });
+      console.log(getReleaseResponse);
 
-      const releaseId = getReleaseResponse.data.id
+      const releaseId = getReleaseResponse.data.id;
       return releaseId;
     }
 }
