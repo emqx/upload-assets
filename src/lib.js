@@ -19,16 +19,9 @@ async function run() {
     const { owner, repo } = github.context.repo;
     const getRelease = new GetRelease(octokit, owner, repo, tagName)
 
-    const uploadUrl = await getRelease.getURL()
-
-    // Fetch existing release assets
-    const existingAssets = await octokit.repos.listReleaseAssets({
-      owner,
-      repo,
-      release_id: getRelease.getId(),
-    });
-
-    const existingAssetNames = existingAssets.data.map(asset => asset.name);
+    const release = await getRelease.fetch();
+    const uploadUrl = release.upload_url;
+    const existingAssetNames = release.assets.map(asset => asset.name);
 
     // Get the inputs from the workflow file: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
     const assetPathsSt = core.getInput('asset_paths', { required: true });
