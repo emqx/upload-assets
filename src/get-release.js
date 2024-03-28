@@ -6,21 +6,16 @@ class GetRelease {
         this.tagName = tagName;
     }
 
-    async getURL() {
-        // This removes the 'refs/tags' portion of the string, i.e. from 'refs/tags/v1.10.15' to 'v1.10.15'
+    async fetch() {
         const tag = this.tagName.replace("refs/tags/", "");
-
-        // Get a release from the tag name
-        // API Documentation: https://developer.github.com/v3/repos/releases/#create-a-release
-        // Octokit Documentation: https://octokit.github.io/rest.js/#octokit-routes-repos-create-release
         const getReleaseResponse = await this.octokit.repos.getReleaseByTag({
             owner: this.owner,
             repo: this.repo,
             tag
         });
 
-        const uploadURL = getReleaseResponse.data.upload_url
-        return uploadURL;
+        const release = getReleaseResponse.data;
+        return release;
     }
 }
 

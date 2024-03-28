@@ -13554,21 +13554,16 @@ class GetRelease {
         this.tagName = tagName;
     }
 
-    async getURL() {
-        // This removes the 'refs/tags' portion of the string, i.e. from 'refs/tags/v1.10.15' to 'v1.10.15'
+    async fetch() {
         const tag = this.tagName.replace("refs/tags/", "");
-
-        // Get a release from the tag name
-        // API Documentation: https://developer.github.com/v3/repos/releases/#create-a-release
-        // Octokit Documentation: https://octokit.github.io/rest.js/#octokit-routes-repos-create-release
         const getReleaseResponse = await this.octokit.repos.getReleaseByTag({
             owner: this.owner,
             repo: this.repo,
             tag
         });
 
-        const uploadURL = getReleaseResponse.data.upload_url
-        return uploadURL;
+        const release = getReleaseResponse.data;
+        return release;
     }
 }
 
@@ -13613,13 +13608,16 @@ async function run() {
     // Get authenticated GitHub client (Ocktokit): https://github.com/actions/toolkit/tree/master/packages/github#usage
     const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
     let tagName = core.getInput('tag_name', { required: false });
+    let skipExisting = core.getInput('skip_existing', { required: false });
     if (tagName.length == 0) {
       tagName = github.context.ref
     }
     const { owner, repo } = github.context.repo;
     const getRelease = new GetRelease(octokit, owner, repo, tagName)
 
-    const uploadUrl = await getRelease.getURL()
+    const release = await getRelease.fetch();
+    const uploadUrl = release.upload_url;
+    const existingAssetNames = release.assets.map(asset => asset.name);
 
     // Get the inputs from the workflow file: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
     const assetPathsSt = core.getInput('asset_paths', { required: true });
@@ -13648,6 +13646,13 @@ async function run() {
     downloadURLs = []
     for(let i = 0; i < paths.length; i++) {
       let asset = paths[i];
+      const assetName = path.basename(asset);
+
+      // Skip upload if asset already exists
+      if (skipExisting && existingAssetNames.includes(assetName)) {
+        console.log(`Asset with the name ${assetName} already exists. Skipping upload for this asset.`);
+        continue;
+      }
 
       // Determine content-length for header to upload asset
       const contentLength = filePath => fs.statSync(filePath).size;
@@ -13658,7 +13663,6 @@ async function run() {
         'content-length': contentLength(asset)
       };
   
-      const assetName = path.basename(asset)
       console.log(`Uploading ${assetName}`)
 
       // Upload a release asset
@@ -13670,14 +13674,14 @@ async function run() {
         name: assetName,
         data: fs.readFileSync(asset)
       });
-  
+
       // Get the browser_download_url for the uploaded release asset from the response
       const {
         data: { browser_download_url: browserDownloadUrl }
       } = uploadAssetResponse;
-  
+
       // Set the output variable for use by other actions: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
-      downloadURLs.push(browserDownloadUrl)
+      downloadURLs.push(browserDownloadUrl);
     }
 
     core.setOutput('browser_download_urls', JSON.stringify(downloadURLs));

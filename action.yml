@@ -8,6 +8,9 @@ inputs:
   tag_name:
     description: 'The name of the tag you want to upload assets to. Defaults to the tag of the release that triggered the workflow.'
     required: false
+  skip_existing:
+    description: 'Whether to skip uploading assets that already exist in the release. Defaults to false.'
+    required: false
 outputs:
   browser_download_urls:
     description: 'The URL users can navigate to in order to download the uploaded asset'
