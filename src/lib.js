@@ -63,20 +63,24 @@ async function run() {
       // Upload a release asset
       // API Documentation: https://developer.github.com/v3/repos/releases/#upload-a-release-asset
       // Octokit Documentation: https://octokit.github.io/rest.js/#octokit-routes-repos-upload-release-asset
-      const uploadAssetResponse = await octokit.repos.uploadReleaseAsset({
-        url: uploadUrl,
-        headers,
-        name: assetName,
-        data: fs.readFileSync(asset)
-      });
-  
-      // Get the browser_download_url for the uploaded release asset from the response
-      const {
-        data: { browser_download_url: browserDownloadUrl }
-      } = uploadAssetResponse;
-  
-      // Set the output variable for use by other actions: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
-      downloadURLs.push(browserDownloadUrl)
+      try {
+        const uploadAssetResponse = await octokit.repos.uploadReleaseAsset({
+          url: uploadUrl,
+          headers,
+          name: assetName,
+          data: fs.readFileSync(asset)
+        });
+
+        // Get the browser_download_url for the uploaded release asset from the response
+        const {
+          data: { browser_download_url: browserDownloadUrl }
+        } = uploadAssetResponse;
+
+        // Set the output variable for use by other actions: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
+        downloadURLs.push(browserDownloadUrl);
+      } catch (uploadError) {
+        console.log(uploadError);
+      }
     }
 
     core.setOutput('browser_download_urls', JSON.stringify(downloadURLs));
